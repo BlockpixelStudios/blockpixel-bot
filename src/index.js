@@ -3,14 +3,13 @@ const fs = require('fs');
 const path = require('path');
 
 // --- SISTEMA DE PROTEÇÃO ANTI-VAZAMENTO (Ofuscação de Dados) ---
-// Cole aqui seus dados reais obtidos no site Text Reverse (Invertidos)
 const tokenInvertido = "w4qy-Gj_vF7RTlGMT3WPBhS4HgXH_QY8ybqPwn.U_RO_G.AOxAzN1ATO2cDO0IjN1QDNxUTM";
 const clientIdInvertido = "8107509678426544151";
 const guildIdInvertido = "4656779771541798041";
 const canalMissoesInvertido = "1146084649942644151";
 
-// Função interna que desinverte os dados em tempo de execução
-const desinverter = (texto) => texto.split('').reverse().join('');
+// Função interna que desinverte e remove qualquer espaço invisível ou quebra de linha
+const desinverter = (texto) => texto.split('').reverse().join('').trim();
 
 const TOKEN = desinverter(tokenInvertido);
 const CLIENT_ID = desinverter(clientIdInvertido);
@@ -18,11 +17,8 @@ const GUILD_ID = desinverter(guildIdInvertido);
 const CANAL_MISSOES_ID = desinverter(canalMissoesInvertido);
 // ---------------------------------------------------------------
 
-// Importa os módulos de comandos e interações
-const criarMissaoComando = require('./commands/criar-missao.js');
-const assumirBotao = require('./interactions/assumir-botao.js');
-const concluirBotao = require('./interactions/concluir-botao.js');
-const direcaoBotoes = require('./interactions/direcao-botoes.js');
+// Exibe um diagnóstico seguro no console da host para sabermos o tamanho do token gerado
+console.log(`[DIAGNÓSTICO] O Token processado tem exatamente ${TOKEN.length} caracteres.`);
 
 const client = new Client({
     intents: [
@@ -32,11 +28,15 @@ const client = new Client({
     ]
 });
 
-// Caminho do arquivo de banco de dados local
+// Garante o caminho seguro do banco de dados local
 const dbPath = path.join(__dirname, '../missoes.json');
 
 function lerMissoes() {
     try {
+        if (!fs.existsSync(dbPath)) {
+            fs.writeFileSync(dbPath, '[]', 'utf8');
+            return [];
+        }
         const dados = fs.readFileSync(dbPath, 'utf8');
         return JSON.parse(dados);
     } catch (error) {
@@ -45,10 +45,16 @@ function lerMissoes() {
 }
 
 function salvarMissoes(missoes) {
-    fs.writeFileSync(dbPath, JSON.stringify(missoes, null, 2), 'utf8');
+    try {
+        fs.writeFileSync(dbPath, JSON.stringify(missoes, null, 2), 'utf8');
+    } catch (error) {
+        console.error('❌ Erro ao salvar o arquivo missoes.json:', error.message);
+    }
 }
 
-// Evento disparado quando o bot se conecta ao Discord
+// Inicializa o arquivo para evitar bugs caso a host tenha limpado a pasta
+lerMissoes();
+
 client.once('ready', async () => {
     console.log(`🤖 Bot online com sucesso como: ${client.user.tag}!`);
 
@@ -74,7 +80,6 @@ client.once('ready', async () => {
 });
 
 client.on('interactionCreate', async interaction => {
-    // 1. Executa o comando /criar-missao (Abre o Modal)
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'criar-missao') {
             try {
@@ -86,7 +91,6 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // 2. Recebe os dados enviados pelo formulário (Modal)
     if (interaction.isModalSubmit()) {
         if (interaction.customId === 'formulario_missao') {
             await interaction.deferReply({ ephemeral: true });
@@ -134,7 +138,6 @@ client.on('interactionCreate', async interaction => {
                     .setStyle(ButtonStyle.Danger);
 
                 const rowDirecao = new ActionRowBuilder().addComponents(botaoEditar, botaoCancelar);
-
                 const mensagemDirecao = await interaction.user.send({ embeds: [embedDirecao], components: [rowDirecao] });
 
                 const listaMissoes = lerMissoes();
@@ -161,39 +164,25 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // 3. Gerenciador de Botões (Interações)
     if (interaction.isButton()) {
         const customId = interaction.customId;
 
         if (customId.startsWith('assumir_')) {
-            try {
-                await assumirBotao.execute(interaction, client);
-            } catch (error) {
-                console.error('Erro no botão assumir:', error);
-            }
+            try { await assumirBotao.execute(interaction, client); } catch (e) { console.error(e); }
         }
-        
         else if (customId.startsWith('concluir_')) {
-            try {
-                await concluirBotao.execute(interaction, client);
-            } catch (error) {
-                console.error('Erro no botão concluir:', error);
-            }
+            try { await concluirBotao.execute(interaction, client); } catch (e) { console.error(e); }
         }
-
         else if (
             customId.startsWith('aprovar_sim_') || 
             customId.startsWith('aprovar_nao_') || 
             customId.startsWith('cancelar_') || 
             customId.startsWith('editar_')
         ) {
-            try {
-                await direcaoBotoes.execute(interaction, client);
-            } catch (error) {
-                console.error('Erro nos botões da direção:', error);
-            }
+            try { await direcaoBotoes.execute(interaction, client); } catch (e) { console.error(e); }
         }
     }
 });
 
 client.login(TOKEN);
+            
