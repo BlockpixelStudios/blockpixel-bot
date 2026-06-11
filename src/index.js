@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 // --- SISTEMA DE PROTEÇÃO ANTI-VAZAMENTO (Ofuscação de Dados) ---
-const tokenInvertido = "w4qy-Gj_vF7RTlGMT3WPBhS4HgXH_QY8ybqPwn.U_RO_G.AOxAzN1ATO2cDO0IjN1QDNxUTM";
+const tokenInvertido = "Eob4VZgEc3tUa4Aig713sz-LydFnnog7Op8bVh.4rTJ9G.AOxAzN1ATO2cDO0IjN1QDNxUTM";
 const clientIdInvertido = "8107509678426544151";
 const guildIdInvertido = "4656779771541798041";
 const canalMissoesInvertido = "1146084649942644151";
