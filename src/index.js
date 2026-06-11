@@ -3,8 +3,9 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 
-// Importa o comando de criar missão
+// Importa os módulos de comandos e interações
 const criarMissaoComando = require('./commands/criar-missao.js');
+const assumirBotao = require('./interactions/assumir-botao.js');
 
 const client = new Client({
     intents: [
@@ -17,7 +18,6 @@ const client = new Client({
 // Caminho do arquivo de banco de dados local
 const dbPath = path.join(__dirname, '../missoes.json');
 
-// Função auxiliar para ler as missões com segurança
 function lerMissoes() {
     try {
         const dados = fs.readFileSync(dbPath, 'utf8');
@@ -27,7 +27,6 @@ function lerMissoes() {
     }
 }
 
-// Função auxiliar para salvar as missões
 function salvarMissoes(missoes) {
     fs.writeFileSync(dbPath, JSON.stringify(missoes, null, 2), 'utf8');
 }
@@ -52,14 +51,13 @@ client.on('interactionCreate', async interaction => {
     // 2. Recebe os dados enviados pelo formulário (Modal)
     if (interaction.isModalSubmit()) {
         if (interaction.customId === 'formulario_missao') {
-            await interaction.deferReply({ ephemeral: true }); // Evita que a interação expire no celular
+            await interaction.deferReply({ ephemeral: true });
 
             const titulo = interaction.fields.getTextInputValue('missao_titulo');
             const setor = interaction.fields.getTextInputValue('missao_setor');
             const descricao = interaction.fields.getTextInputValue('missao_descricao');
-            const missaoId = `m_${Date.now()}`; // Gera um ID único baseado no tempo atual
+            const missaoId = `m_${Date.now()}`;
 
-            // Criando o Card (Embed) da Missão para a Equipe
             const embedEquipe = new EmbedBuilder()
                 .setTitle(`⚔️ Nova Missão: ${titulo}`)
                 .setColor('#5865F2')
@@ -71,7 +69,6 @@ client.on('interactionCreate', async interaction => {
                 .setFooter({ text: `ID da Missão: ${missaoId}` })
                 .setTimestamp();
 
-            // Botão para a equipe assumir a missão
             const botaoAssumir = new ButtonBuilder()
                 .setCustomId(`assumir_${missaoId}`)
                 .setLabel('Assumir Missão')
@@ -81,11 +78,9 @@ client.on('interactionCreate', async interaction => {
             const rowEquipe = new ActionRowBuilder().addComponents(botaoAssumir);
 
             try {
-                // Envia no canal de missões público da equipe
                 const canalMissoes = await client.channels.fetch(process.env.CANAL_MISSOES_ID);
                 const mensagemEquipe = await canalMissoes.send({ embeds: [embedEquipe], components: [rowEquipe] });
 
-                // Criando o Card para a DM da Direção (com botões de Editar e Cancelar)
                 const embedDirecao = EmbedBuilder.from(embedEquipe).setTitle(`⚙️ Controle de Missão: ${titulo}`);
                 
                 const botaoEditar = new ButtonBuilder()
@@ -102,10 +97,8 @@ client.on('interactionCreate', async interaction => {
 
                 const rowDirecao = new ActionRowBuilder().addComponents(botaoEditar, botaoCancelar);
 
-                // Envia na DM de quem criou a missão (membro da Direção)
                 const mensagemDirecao = await interaction.user.send({ embeds: [embedDirecao], components: [rowDirecao] });
 
-                // Salva a nova missão no arquivo JSON local
                 const listaMissoes = lerMissoes();
                 listaMissoes.push({
                     id: missaoId,
@@ -125,12 +118,27 @@ client.on('interactionCreate', async interaction => {
 
             } catch (error) {
                 console.error('Erro ao processar criação de missão:', error);
-                await interaction.editReply({ content: '❌ Erro ao enviar os cards de missão. Verifique se os IDs no .env estão corretos e se as Direct Messages estão abertas.' });
+                await interaction.editReply({ content: '❌ Erro ao enviar os cards de missão.' });
             }
         }
     }
 
-    // 3. Próximo passo: Escutar os cliques dos botões (Assumir, Concluir, etc.)
+    // 3. Gerenciador de Botões (Interações)
+    if (interaction.isButton()) {
+        // Ação: Membro clica em Assumir Missão
+        if (interaction.customId.startsWith('assumir_')) {
+            try {
+                await assumirBotao.execute(interaction, client);
+            } catch (error) {
+                console.error('Erro ao processar o botão assumir:', error);
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({ content: '❌ Houve um erro ao assumir esta missão.', ephemeral: true });
+                }
+            }
+        }
+        
+        // Espaço reservado para os próximos botões (concluir, sim, nao, editar, cancelar)
+    }
 });
 
 client.login(process.env.DISCORD_TOKEN);
