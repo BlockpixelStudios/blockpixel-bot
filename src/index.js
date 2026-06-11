@@ -17,6 +17,12 @@ const GUILD_ID = desinverter(guildIdInvertido);
 const CANAL_MISSOES_ID = desinverter(canalMissoesInvertido);
 // ---------------------------------------------------------------
 
+// IMPORTAÇÕES DOS COMANDOS E INTERAÇÕES ADICIONADAS 👑
+const criarMissaoComando = require('./commands/criar-missao.js');
+const assumirBotao = require('./interactions/assumir-botao.js');
+const concluirBotao = require('./interactions/concluir-botao.js');
+const direcaoBotoes = require('./interactions/direcao-botoes.js');
+
 // Exibe um diagnóstico seguro no console da host para sabermos o tamanho do token gerado
 console.log(`[DIAGNÓSTICO] O Token processado tem exatamente ${TOKEN.length} caracteres.`);
 
@@ -185,4 +191,4 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(TOKEN);
-            
+
