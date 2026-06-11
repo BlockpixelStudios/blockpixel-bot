@@ -1,7 +1,9 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
-require('dotenv').config();
+const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+
+// Força o dotenv a procurar o arquivo .env exatamente na raiz do projeto (/home/container/.env)
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // Importa os módulos de comandos e interações
 const criarMissaoComando = require('./commands/criar-missao.js');
@@ -33,8 +35,35 @@ function salvarMissoes(missoes) {
     fs.writeFileSync(dbPath, JSON.stringify(missoes, null, 2), 'utf8');
 }
 
-client.once('ready', () => {
+// Evento disparado quando o bot se conecta ao Discord
+client.once('ready', async () => {
     console.log(`🤖 Bot online com sucesso como: ${client.user.tag}!`);
+
+    // DEPLOY AUTOMÁTICO DE COMANDOS (Corrige o problema de não aparecer no Discord)
+    if (!process.env.DISCORD_TOKEN || !process.env.CLIENT_ID || !process.env.GUILD_ID) {
+        console.error('❌ Erro no Deploy: Variáveis de ambiente não foram carregadas corretamente. Verifique o arquivo .env na Host.');
+        return;
+    }
+
+    try {
+        console.log('🔄 Iniciando a sincronização automática do comando (/criar-missao)...');
+        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+        
+        const commands = [
+            {
+                name: 'criar-missao',
+                description: 'Abre o formulário para criar uma nova missão para a equipe da Blockpixel Studios.'
+            }
+        ];
+
+        await rest.put(
+            Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+            { body: commands },
+        );
+        console.log('✅ Comando (/criar-missao) registrado com sucesso no Discord!');
+    } catch (error) {
+        console.error('❌ Erro ao registrar comando no deploy automático:', error);
+    }
 });
 
 client.on('interactionCreate', async interaction => {
