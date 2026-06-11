@@ -6,6 +6,8 @@ const path = require('path');
 // Importa os módulos de comandos e interações
 const criarMissaoComando = require('./commands/criar-missao.js');
 const assumirBotao = require('./interactions/assumir-botao.js');
+const concluirBotao = require('./interactions/concluir-botao.js');
+const direcaoBotoes = require('./interactions/direcao-botoes.js');
 
 const client = new Client({
     intents: [
@@ -125,21 +127,41 @@ client.on('interactionCreate', async interaction => {
 
     // 3. Gerenciador de Botões (Interações)
     if (interaction.isButton()) {
+        const customId = interaction.customId;
+
         // Ação: Membro clica em Assumir Missão
-        if (interaction.customId.startsWith('assumir_')) {
+        if (customId.startsWith('assumir_')) {
             try {
                 await assumirBotao.execute(interaction, client);
             } catch (error) {
-                console.error('Erro ao processar o botão assumir:', error);
-                if (!interaction.replied && !interaction.deferred) {
-                    await interaction.reply({ content: '❌ Houve um erro ao assumir esta missão.', ephemeral: true });
-                }
+                console.error('Erro no botão assumir:', error);
             }
         }
         
-        // Espaço reservado para os próximos botões (concluir, sim, nao, editar, cancelar)
+        // Ação: Membro clica em Concluir Missão (dentro do canal privado)
+        else if (customId.startsWith('concluir_')) {
+            try {
+                await concluirBotao.execute(interaction, client);
+            } catch (error) {
+                console.error('Erro no botão concluir:', error);
+            }
+        }
+
+        // Ações da Direção: Aprovar, Recusar, Editar ou Cancelar
+        else if (
+            customId.startsWith('aprovar_sim_') || 
+            customId.startsWith('aprovar_nao_') || 
+            customId.startsWith('cancelar_') || 
+            customId.startsWith('editar_')
+        ) {
+            try {
+                await direcaoBotoes.execute(interaction, client);
+            } catch (error) {
+                console.error('Erro nos botões da direção:', error);
+            }
+        }
     }
 });
 
 client.login(process.env.DISCORD_TOKEN);
-                    
+                     
