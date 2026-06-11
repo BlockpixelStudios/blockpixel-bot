@@ -2,8 +2,8 @@ const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ButtonStyle, Act
 const fs = require('fs');
 const path = require('path');
 
-// Força o dotenv a procurar o arquivo .env exatamente na raiz do projeto (/home/container/.env)
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+// Altera o caminho relativo para o caminho absoluto do contêiner da host
+require('dotenv').config({ path: '/home/container/.env' });
 
 // Importa os módulos de comandos e interações
 const criarMissaoComando = require('./commands/criar-missao.js');
@@ -46,7 +46,7 @@ client.once('ready', async () => {
     }
 
     try {
-        console.log('🔄 Iniciando a sincronização automática do comando (/criar-missao)...');
+        console.log('🔄 Sincronizando o comando (/criar-missao) com o servidor...');
         const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
         
         const commands = [
@@ -193,4 +193,4 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
-                     
+                
