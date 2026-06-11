@@ -2,8 +2,24 @@ const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ButtonStyle, Act
 const fs = require('fs');
 const path = require('path');
 
-// Altera o caminho relativo para o caminho absoluto do contêiner da host
-require('dotenv').config({ path: '/home/container/.env' });
+// Caminho absoluto para o arquivo de configuração na host
+const configPath = '/home/container/configuracao.json';
+let config = {};
+
+// Carrega as configurações de forma segura se o arquivo existir
+try {
+    if (fs.existsSync(configPath)) {
+        config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    }
+} catch (error) {
+    console.error('⚠️ Não foi possível ler o arquivo configuracao.json local:', error.message);
+}
+
+// Atalhos para não precisar alterar o resto do código (mapeia o config para o escopo ou variáveis)
+const TOKEN = config.DISCORD_TOKEN;
+const CLIENT_ID = config.CLIENT_ID;
+const GUILD_ID = config.GUILD_ID;
+const CANAL_MISSOES_ID = config.CANAL_MISSOES_ID;
 
 // Importa os módulos de comandos e interações
 const criarMissaoComando = require('./commands/criar-missao.js');
@@ -39,15 +55,15 @@ function salvarMissoes(missoes) {
 client.once('ready', async () => {
     console.log(`🤖 Bot online com sucesso como: ${client.user.tag}!`);
 
-    // DEPLOY AUTOMÁTICO DE COMANDOS (Corrige o problema de não aparecer no Discord)
-    if (!process.env.DISCORD_TOKEN || !process.env.CLIENT_ID || !process.env.GUILD_ID) {
-        console.error('❌ Erro no Deploy: Variáveis de ambiente não foram carregadas corretamente. Verifique o arquivo .env na Host.');
+    // DEPLOY AUTOMÁTICO DE COMANDOS
+    if (!TOKEN || !CLIENT_ID || !GUILD_ID) {
+        console.error('❌ Erro no Deploy: O arquivo configuracao.json foi deletado pelo script de inicialização da Host ou está incompleto.');
         return;
     }
 
     try {
         console.log('🔄 Sincronizando o comando (/criar-missao) com o servidor...');
-        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+        const rest = new REST({ version: '10' }).setToken(TOKEN);
         
         const commands = [
             {
@@ -57,7 +73,7 @@ client.once('ready', async () => {
         ];
 
         await rest.put(
-            Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+            Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
             { body: commands },
         );
         console.log('✅ Comando (/criar-missao) registrado com sucesso no Discord!');
@@ -67,7 +83,6 @@ client.once('ready', async () => {
 });
 
 client.on('interactionCreate', async interaction => {
-    // 1. Executa o comando /criar-missao (Abre o Modal)
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'criar-missao') {
             try {
@@ -79,7 +94,6 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // 2. Recebe os dados enviados pelo formulário (Modal)
     if (interaction.isModalSubmit()) {
         if (interaction.customId === 'formulario_missao') {
             await interaction.deferReply({ ephemeral: true });
@@ -109,7 +123,8 @@ client.on('interactionCreate', async interaction => {
             const rowEquipe = new ActionRowBuilder().addComponents(botaoAssumir);
 
             try {
-                const canalMissoes = await client.channels.fetch(process.env.CANAL_MISSOES_ID);
+                // Usa a variável local carregada do JSON
+                const canalMissoes = await client.channels.fetch(CANAL_MISSOES_ID);
                 const mensagemEquipe = await canalMissoes.send({ embeds: [embedEquipe], components: [rowEquipe] });
 
                 const embedDirecao = EmbedBuilder.from(embedEquipe).setTitle(`⚙️ Controle de Missão: ${titulo}`);
@@ -127,7 +142,6 @@ client.on('interactionCreate', async interaction => {
                     .setStyle(ButtonStyle.Danger);
 
                 const rowDirecao = new ActionRowBuilder().addComponents(botaoEditar, botaoCancelar);
-
                 const mensagemDirecao = await interaction.user.send({ embeds: [embedDirecao], components: [rowDirecao] });
 
                 const listaMissoes = lerMissoes();
@@ -154,43 +168,26 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // 3. Gerenciador de Botões (Interações)
     if (interaction.isButton()) {
         const customId = interaction.customId;
 
-        // Ação: Membro clica em Assumir Missão
         if (customId.startsWith('assumir_')) {
-            try {
-                await assumirBotao.execute(interaction, client);
-            } catch (error) {
-                console.error('Erro no botão assumir:', error);
-            }
+            try { await assumirBotao.execute(interaction, client); } catch (error) { console.error(error); }
         }
-        
-        // Ação: Membro clica em Concluir Missão (dentro do canal privado)
         else if (customId.startsWith('concluir_')) {
-            try {
-                await concluirBotao.execute(interaction, client);
-            } catch (error) {
-                console.error('Erro no botão concluir:', error);
-            }
+            try { await concluirBotao.execute(interaction, client); } catch (error) { console.error(error); }
         }
-
-        // Ações da Direção: Aprovar, Recusar, Editar ou Cancelar
         else if (
             customId.startsWith('aprovar_sim_') || 
             customId.startsWith('aprovar_nao_') || 
             customId.startsWith('cancelar_') || 
             customId.startsWith('editar_')
         ) {
-            try {
-                await direcaoBotoes.execute(interaction, client);
-            } catch (error) {
-                console.error('Erro nos botões da direção:', error);
-            }
+            try { await direcaoBotoes.execute(interaction, client); } catch (error) { console.error(error); }
         }
     }
 });
 
-client.login(process.env.DISCORD_TOKEN);
-                
+// Faz o login usando o Token extraído do JSON
+client.login(TOKEN);
+    
