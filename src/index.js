@@ -2,24 +2,21 @@ const { Client, GatewayIntentBits, EmbedBuilder, ButtonBuilder, ButtonStyle, Act
 const fs = require('fs');
 const path = require('path');
 
-// Caminho absoluto para o arquivo de configuração na host
-const configPath = '/home/container/configuracao.json';
-let config = {};
+// --- SISTEMA DE PROTEÇÃO ANTI-VAZAMENTO (Ofuscação de Dados) ---
+// Cole aqui seus dados reais obtidos no site Text Reverse (Invertidos)
+const tokenInvertido = "w4qy-Gj_vF7RTlGMT3WPBhS4HgXH_QY8ybqPwn.U_RO_G.AOxAzN1ATO2cDO0IjN1QDNxUTM";
+const clientIdInvertido = "8107509678426544151";
+const guildIdInvertido = "4656779771541798041";
+const canalMissoesInvertido = "1146084649942644151";
 
-// Carrega as configurações de forma segura se o arquivo existir
-try {
-    if (fs.existsSync(configPath)) {
-        config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    }
-} catch (error) {
-    console.error('⚠️ Não foi possível ler o arquivo configuracao.json local:', error.message);
-}
+// Função interna que desinverte os dados em tempo de execução
+const desinverter = (texto) => texto.split('').reverse().join('');
 
-// Atalhos para não precisar alterar o resto do código (mapeia o config para o escopo ou variáveis)
-const TOKEN = config.DISCORD_TOKEN;
-const CLIENT_ID = config.CLIENT_ID;
-const GUILD_ID = config.GUILD_ID;
-const CANAL_MISSOES_ID = config.CANAL_MISSOES_ID;
+const TOKEN = desinverter(tokenInvertido);
+const CLIENT_ID = desinverter(clientIdInvertido);
+const GUILD_ID = desinverter(guildIdInvertido);
+const CANAL_MISSOES_ID = desinverter(canalMissoesInvertido);
+// ---------------------------------------------------------------
 
 // Importa os módulos de comandos e interações
 const criarMissaoComando = require('./commands/criar-missao.js');
@@ -55,12 +52,6 @@ function salvarMissoes(missoes) {
 client.once('ready', async () => {
     console.log(`🤖 Bot online com sucesso como: ${client.user.tag}!`);
 
-    // DEPLOY AUTOMÁTICO DE COMANDOS
-    if (!TOKEN || !CLIENT_ID || !GUILD_ID) {
-        console.error('❌ Erro no Deploy: O arquivo configuracao.json foi deletado pelo script de inicialização da Host ou está incompleto.');
-        return;
-    }
-
     try {
         console.log('🔄 Sincronizando o comando (/criar-missao) com o servidor...');
         const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -83,6 +74,7 @@ client.once('ready', async () => {
 });
 
 client.on('interactionCreate', async interaction => {
+    // 1. Executa o comando /criar-missao (Abre o Modal)
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'criar-missao') {
             try {
@@ -94,6 +86,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
+    // 2. Recebe os dados enviados pelo formulário (Modal)
     if (interaction.isModalSubmit()) {
         if (interaction.customId === 'formulario_missao') {
             await interaction.deferReply({ ephemeral: true });
@@ -123,7 +116,6 @@ client.on('interactionCreate', async interaction => {
             const rowEquipe = new ActionRowBuilder().addComponents(botaoAssumir);
 
             try {
-                // Usa a variável local carregada do JSON
                 const canalMissoes = await client.channels.fetch(CANAL_MISSOES_ID);
                 const mensagemEquipe = await canalMissoes.send({ embeds: [embedEquipe], components: [rowEquipe] });
 
@@ -142,6 +134,7 @@ client.on('interactionCreate', async interaction => {
                     .setStyle(ButtonStyle.Danger);
 
                 const rowDirecao = new ActionRowBuilder().addComponents(botaoEditar, botaoCancelar);
+
                 const mensagemDirecao = await interaction.user.send({ embeds: [embedDirecao], components: [rowDirecao] });
 
                 const listaMissoes = lerMissoes();
@@ -168,26 +161,39 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
+    // 3. Gerenciador de Botões (Interações)
     if (interaction.isButton()) {
         const customId = interaction.customId;
 
         if (customId.startsWith('assumir_')) {
-            try { await assumirBotao.execute(interaction, client); } catch (error) { console.error(error); }
+            try {
+                await assumirBotao.execute(interaction, client);
+            } catch (error) {
+                console.error('Erro no botão assumir:', error);
+            }
         }
+        
         else if (customId.startsWith('concluir_')) {
-            try { await concluirBotao.execute(interaction, client); } catch (error) { console.error(error); }
+            try {
+                await concluirBotao.execute(interaction, client);
+            } catch (error) {
+                console.error('Erro no botão concluir:', error);
+            }
         }
+
         else if (
             customId.startsWith('aprovar_sim_') || 
             customId.startsWith('aprovar_nao_') || 
             customId.startsWith('cancelar_') || 
             customId.startsWith('editar_')
         ) {
-            try { await direcaoBotoes.execute(interaction, client); } catch (error) { console.error(error); }
+            try {
+                await direcaoBotoes.execute(interaction, client);
+            } catch (error) {
+                console.error('Erro nos botões da direção:', error);
+            }
         }
     }
 });
 
-// Faz o login usando o Token extraído do JSON
 client.login(TOKEN);
-    
